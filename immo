@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="ImmoAkademie" />
+  <meta name="theme-color" content="#b8712a" />
+  <title>ImmoAkademie RheinMain</title>
+  <!-- React + Babel (no build step needed) -->
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    html, body, #root { height: 100%; }
+    body { margin: 0; }
+    #loading { display: flex; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; color: #948c80; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div id="root"><div id="loading">Wird geladen…</div></div>
+  <script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo, useRef } = React;
+
+// ─── CSS ──────────────────────────────────────────────────────────────────────
+const STYLE = `
+@import url(‘https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,700&display=swap’);
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:‘Plus Jakarta Sans’,sans-serif;background:#f5f3ef;color:#18150f;min-height:100vh}
+h1,h2,h3,h4{font-family:‘Fraunces’,serif;line-height:1.15}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer;border:none;background:none}
+button:disabled{opacity:.45;cursor:not-allowed}
+
+/* Layout */
+.app{display:grid;grid-template-columns:248px 1fr;min-height:100vh}
+.side{background:#fff;border-right:1.5px solid #d8d2c8;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+.brand{padding:16px;display:flex;align-items:center;gap:10px;border-bottom:1.5px solid #d8d2c8}
+.brand-ico{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#b8712a,#e8952e);display:grid;place-items:center;font-family:‘Fraunces’,serif;font-weight:700;font-size:14px;color:#fff;flex-shrink:0}
+.brand strong{font-family:‘Fraunces’,serif;font-size:14px;display:block}
+.brand small{font-size:11px;color:#948c80;font-weight:600}
+.nav-g{padding:8px 10px 4px}
+.nav-lbl{font-size:10px;font-weight:800;color:#948c80;text-transform:uppercase;letter-spacing:.8px;padding:5px 8px 3px;display:block}
+.nav-btn{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:9px;color:#52493d;font-size:13px;font-weight:600;transition:all .13s;width:100%;text-align:left}
+.nav-btn:hover{background:#f0ece6;color:#18150f}
+.nav-btn.on{background:#fef6ec;color:#b8712a;font-weight:700}
+.nav-ico{font-size:15px;width:18px;text-align:center;flex-shrink:0}
+.side-foot{margin-top:auto;padding:12px 10px;border-top:1.5px solid #d8d2c8}
+.lv-box{background:#fef6ec;border:1.5px solid #f2d49a;border-radius:9px;padding:11px 13px}
+.lv-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+.lv-name{font-family:‘Fraunces’,serif;font-size:14px}
+.lv-num{font-size:10px;font-weight:800;color:#b8712a;text-transform:uppercase}
+.xp-bar{height:5px;border-radius:999px;background:#e5e0d8;overflow:hidden;margin:2px 0}
+.xp-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#b8712a,#e8952e);transition:width .5s}
+.lv-box small{font-size:11px;color:#948c80}
+
+/* Main */
+.main{padding:26px 28px 80px}
+.mob-head{display:none}
+.bot-nav{display:none}
+
+/* Hero */
+.hero{background:linear-gradient(120deg,#2c1a07 0%,#4a2e10 50%,#5c3a16 100%);border-radius:14px;padding:26px;margin-bottom:18px;position:relative;overflow:hidden}
+.hero::before{content:’’;position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(232,149,46,.2),transparent 62%);pointer-events:none}
+.hero>*{position:relative;z-index:1}
+.h-ew{font-size:10px;font-weight:800;color:#f2d49a;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.h-ew::before{content:’’;width:5px;height:5px;border-radius:50%;background:#f2d49a}
+.h-title{font-size:clamp(18px,2.8vw,27px);color:#fff;margin-bottom:7px}
+.h-sub{color:rgba(255,255,255,.68);font-size:13.5px;margin-bottom:15px;max-width:520px;line-height:1.6}
+.h-bar-t{height:5px;border-radius:999px;background:rgba(255,255,255,.18);overflow:hidden;width:min(300px,100%);margin-bottom:4px}
+.h-bar-f{height:100%;border-radius:999px;background:linear-gradient(90deg,#f2d49a,#e8952e);transition:width .5s}
+.h-bar-lbl{font-size:11px;color:rgba(255,255,255,.5);margin-bottom:15px}
+.h-btns{display:flex;gap:8px;flex-wrap:wrap}
+.hb-p{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:999px;background:linear-gradient(135deg,#e8952e,#c8751a);color:#fff;font-weight:700;font-size:13px;border:none;cursor:pointer;transition:all .14s;box-shadow:0 2px 10px rgba(0,0,0,.22)}
+.hb-p:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,0,0,.3)}
+.hb-s{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:999px;background:rgba(255,255,255,.12);color:#fff;font-weight:700;font-size:13px;border:1.5px solid rgba(255,255,255,.22);cursor:pointer;transition:all .14s}
+.hb-s:hover{background:rgba(255,255,255,.2)}
+
+/* Cards */
+.card{background:#fff;border:1.5px solid #d8d2c8;border-radius:14px;padding:18px}
+
+/* Grid */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:13px}
+.gg{display:grid;gap:13px}
+
+/* Stat cards */
+.sc{background:#fff;border:1.5px solid #d8d2c8;border-radius:14px;padding:16px 18px}
+.sc-v{font-family:‘Fraunces’,serif;font-size:26px;color:#18150f;line-height:1;margin-bottom:3px}
+.sc-l{font-size:10.5px;font-weight:800;color:#948c80;text-transform:uppercase;letter-spacing:.5px}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 16px;border-radius:999px;font-weight:700;font-size:12.5px;transition:all .13s;cursor:pointer;border:1.5px solid transparent;white-space:nowrap}
+.b-p{background:#b8712a;color:#fff;border-color:#b8712a}
+.b-p:hover:not(:disabled){background:#9d5e1f;transform:translateY(-1px)}
+.b-s{background:#fff;color:#18150f;border-color:#d8d2c8}
+.b-s:hover:not(:disabled){background:#f0ece6}
+.b-g{background:transparent;color:#52493d;border-color:#d8d2c8}
+.b-g:hover:not(:disabled){background:#f0ece6}
+.b-d{background:#fdf1f0;color:#b52a1e;border-color:#f0aba4}
+.b-ok{background:#eaf5ef;color:#1e6e43;border-color:#9fd4b8}
+.b-sm{padding:5px 12px;font-size:12px}
+.b-lg{padding:11px 24px;font-size:13.5px}
+.b-full{width:100%}
+
+/* Tags */
+.tag{display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:700;border:1.5px solid #d8d2c8}
+.t-a{background:#fef6ec;border-color:#f2d49a;color:#b8712a}
+.t-g{background:#eaf5ef;border-color:#9fd4b8;color:#1e6e43}
+.t-r{background:#fdf1f0;border-color:#f0aba4;color:#b52a1e}
+.t-m{background:#f0ece6;border-color:#d8d2c8;color:#948c80}
+
+/* Progress bars */
+.pb{height:6px;border-radius:999px;background:#e5e0d8;overflow:hidden}
+.pf{height:100%;border-radius:999px;background:linear-gradient(90deg,#b8712a,#e8952e);transition:width .4s}
+.pf-g{background:linear-gradient(90deg,#1e6e43,#3a9a60)}
+.pf-r{background:linear-gradient(90deg,#b52a1e,#e04535)}
+
+/* Page header */
+.ph-wrap{margin-bottom:22px}
+.ew{font-size:10px;font-weight:800;color:#b8712a;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.ew::before{content:’’;width:5px;height:5px;border-radius:50%;background:#b8712a}
+.p-title{font-size:clamp(20px,3vw,32px);color:#18150f;margin-bottom:5px}
+.p-sub{color:#52493d;font-size:13.5px;line-height:1.55}
+
+/* Question card */
+.qc{background:#fff;border:1.5px solid #d8d2c8;border-radius:14px;padding:16px;margin-bottom:11px}
+.q-text{font-size:14px;font-weight:600;color:#18150f;line-height:1.62;margin-bottom:12px}
+.a-opt{display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border:1.5px solid #d8d2c8;border-radius:9px;margin-bottom:6px;cursor:pointer;background:#fff;font-size:13px;font-weight:500;color:#18150f;text-align:left;width:100%;line-height:1.45;transition:all .13s}
+.a-opt:hover:not(:disabled){background:#fef6ec;border-color:#f2d49a}
+.a-opt.sel{background:#fef6ec;border-color:#b8712a}
+.a-opt.cor{background:#eaf5ef;border-color:#9fd4b8;color:#1e6e43}
+.a-opt.wrn{background:#fdf1f0;border-color:#f0aba4;color:#b52a1e}
+.a-opt:disabled{cursor:default}
+.ol{width:21px;height:21px;border-radius:6px;border:1.5px solid #d8d2c8;display:grid;place-items:center;font-size:10px;font-weight:800;flex-shrink:0;background:#f0ece6;color:#52493d}
+.a-opt.sel .ol{background:#b8712a;border-color:#b8712a;color:#fff}
+.a-opt.cor .ol{background:#1e6e43;border-color:#1e6e43;color:#fff}
+.a-opt.wrn .ol{background:#b52a1e;border-color:#b52a1e;color:#fff}
+.exp{margin-top:9px;border:1.5px solid #d8d2c8;border-radius:9px;padding:11px 13px;font-size:13px;color:#52493d;line-height:1.6}
+.exp-ok{background:#eaf5ef;border-color:#9fd4b8}
+.exp-bad{background:#fdf1f0;border-color:#f0aba4}
+.exp-hd{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.exp-ok .exp-hd{color:#1e6e43}
+.exp-bad .exp-hd{color:#b52a1e}
+
+/* Flashcard */
+.fc{border:1.5px solid #d8d2c8;border-radius:14px;background:#fff;overflow:hidden;margin-bottom:8px}
+.fc-front{padding:14px 16px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px;font-weight:600;font-size:13px;line-height:1.5;color:#18150f;transition:background .13s}
+.fc-front:hover{background:#f0ece6}
+.fc-back{padding:13px 16px;background:#fef6ec;border-top:1.5px solid #f2d49a;font-size:13px;color:#52493d;line-height:1.65}
+.fc-acts{padding:9px 16px;display:flex;gap:6px;background:#f0ece6;border-top:1.5px solid #d8d2c8;flex-wrap:wrap}
+
+/* Forms */
+.fg{display:grid;gap:5px;margin-bottom:13px}
+.fl{font-size:12px;font-weight:700;color:#52493d}
+.fi{border:1.5px solid #d8d2c8;border-radius:9px;padding:8px 12px;background:#fff;color:#18150f;font-size:13px;outline:none;width:100%;transition:border-color .13s,box-shadow .13s}
+.fi:focus{border-color:#b8712a;box-shadow:0 0 0 3px rgba(184,113,42,.1)}
+textarea.fi{min-height:80px;resize:vertical;line-height:1.6}
+select.fi{cursor:pointer}
+
+/* Notice */
+.notice{padding:10px 13px;border-radius:9px;font-size:12.5px;line-height:1.55;margin:9px 0}
+.n-i{background:#eef3fb;border:1.5px solid #aac4ee;color:#1d4e96}
+.n-w{background:#fff8ec;border:1.5px solid #f5d88a;color:#6b4f00}
+.n-ok{background:#eaf5ef;border:1.5px solid #9fd4b8;color:#1e6e43}
+
+/* Tabs */
+.tabs{display:flex;gap:3px;background:#f0ece6;padding:3px;border-radius:9px;margin-bottom:16px}
+.tab{padding:7px 13px;border-radius:7px;font-size:12px;font-weight:700;color:#52493d;cursor:pointer;transition:all .13s;border:none;background:none;flex:1;text-align:center}
+.tab.on{background:#fff;color:#18150f;box-shadow:0 1px 4px rgba(0,0,0,.09)}
+
+/* Accordion */
+.acc{border:1.5px solid #d8d2c8;border-radius:9px;overflow:hidden;margin-bottom:9px}
+.acc-h{padding:12px 14px;background:#fff;display:flex;justify-content:space-between;align-items:center;cursor:pointer;gap:12px;transition:background .13s;user-select:none}
+.acc-h:hover{background:#f0ece6}
+.acc-b{padding:14px;border-top:1.5px solid #d8d2c8;background:#f5f3ef}
+
+/* Option editor row */
+.oer{display:flex;gap:7px;margin-bottom:7px;align-items:center}
+.cm{width:26px;height:26px;border-radius:7px;border:1.5px solid #d8d2c8;display:grid;place-items:center;font-size:10px;font-weight:800;flex-shrink:0;cursor:pointer;background:#f0ece6;color:#948c80;transition:all .13s}
+.cm.on{background:#1e6e43;border-color:#1e6e43;color:#fff}
+.cm:hover:not(.on){background:#eaf5ef;border-color:#9fd4b8;color:#1e6e43}
+
+/* Heatmap */
+.hmap{display:grid;grid-template-columns:repeat(15,1fr);gap:3px}
+.hc{aspect-ratio:1;border-radius:3px;background:#e5e0d8}
+.hc.on{background:#b8712a}
+.hc.td{background:#e8952e;outline:2px solid #b8712a;outline-offset:1px}
+
+/* Section title */
+.st{font-family:‘Fraunces’,serif;font-size:16px;margin-bottom:12px}
+
+/* Row */
+.row{display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap;margin-bottom:12px}
+
+/* Toast */
+.toast{position:fixed;right:16px;top:14px;z-index:9999;padding:8px 15px;background:#b8712a;color:#fff;border-radius:999px;font-weight:700;font-size:12.5px;box-shadow:0 3px 16px rgba(0,0,0,.2);pointer-events:none;animation:tpop 2.8s ease forwards}
+@keyframes tpop{0%{opacity:0;transform:translateY(-6px)}12%{opacity:1;transform:translateY(0)}78%{opacity:1}100%{opacity:0;transform:translateY(-6px)}}
+
+/* Responsive */
+@media(max-width:840px){
+.app{display:block}
+.side{display:none}
+.mob-head{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;background:#fff;border-bottom:1.5px solid #d8d2c8;position:sticky;top:0;z-index:50}
+.mob-head strong{font-family:‘Fraunces’,serif;font-size:15px}
+.bot-nav{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1.5px solid #d8d2c8;padding:5px 4px max(env(safe-area-inset-bottom),5px);z-index:50}
+.bn{display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 2px;border-radius:7px;font-size:10px;font-weight:700;color:#948c80;cursor:pointer;border:none;background:none;width:100%}
+.bn.on{color:#b8712a}
+.bn .nav-ico{font-size:19px}
+.main{padding:14px 13px 96px}
+.g2,.g4{grid-template-columns:1fr}
+.h-btns{flex-direction:column}
+.hb-p,.hb-s{width:100%;justify-content:center}
+}
+@media(max-width:420px){
+.fc-acts{flex-direction:column}
+.fc-acts .btn{width:100%;justify-content:center}
+}
+`;
+
+// ─── SEED DATA ────────────────────────────────────────────────────────────────
+const SEED_MODULES = [
+{
+id:“grundlagen”, title:“Immobiliengrundlagen”, icon:“🏠”, xpReward:150,
+description:“Grundbegriffe, Eigennutzer vs. Kapitalanleger, Kaufentscheidungslogik.”,
+questions:[
+{id:“g1”,question:“Ein Kunde fragt sehr früh nach einem konkreten Preis. Was ist die professionellste Reaktion?”,
+options:[“Sofort eine hohe Zahl nennen.”,“Erst Objekt, Lage und Unterlagen prüfen, dann eine belastbare Einschätzung geben.”,“Auf Online-Portale verweisen.”,“Frage ignorieren.”],
+correctIndex:1,difficulty:“mittel”,explanation:“Ein professioneller Makler trennt Wunschpreis, Angebotspreis und realistische Markteinschätzung. Eine Zahl ohne Prüfung schafft Konflikte.”},
+{id:“g2”,question:“Was unterscheidet Eigennutzer von Kapitalanlegern?”,
+options:[“Eigennutzer kaufen immer teurer.”,“Eigennutzer entscheiden emotional nach Lage/Lebensgefühl, Anleger rationaler nach Rendite.”,“Anleger haben immer mehr Eigenkapital.”,“Kein Unterschied.”],
+correctIndex:1,difficulty:“leicht”,explanation:“Die Entscheidungslogik ist grundlegend verschieden. Wer das nicht erkennt, argumentiert falsch.”},
+],
+cards:[
+{id:“gc1”,front:“Was ist Makrolage?”,back:“Stadt, Region, Arbeitsmarkt, Infrastruktur, Image und demografische Entwicklung.”},
+{id:“gc2”,front:“Was ist Mikrolage?”,back:“Direktes Umfeld: Straße, Lärm, Nachbarschaft, Parken, ÖPNV, Schulen, Nahversorgung.”},
+],
+},
+{
+id:“finanzierung”, title:“Finanzierung & Nebenkosten”, icon:“💰”, xpReward:160,
+description:“Eigenkapital, Kaufnebenkosten Hessen, Finanzierungsbestätigung.”,
+questions:[
+{id:“f1”,question:“Grunderwerbsteuer in Hessen bei 450.000 € Kaufpreis?”,
+options:[“18.000 €”,“22.500 €”,“27.000 €”,“35.700 €”],
+correctIndex:2,difficulty:“mittel”,explanation:“6 % von 450.000 € = 27.000 €. Dazu kommen noch Notar und Grundbuch.”},
+{id:“f2”,question:“Was ist eine Finanzierungsbestätigung?”,
+options:[“Verbindliche Kreditzusage.”,“Indiz dass die Bank grundsätzlich geprüft hat – keine Garantie.”,“Notarielles Dokument.”,“Fertiger Kreditvertrag.”],
+correctIndex:1,difficulty:“leicht”,explanation:“Makler sollten die Finanzierungslogik kennen, ohne selbst zu beraten.”},
+],
+cards:[
+{id:“fc1”,front:“Grunderwerbsteuer Hessen?”,back:“6 % des Kaufpreises.”},
+{id:“fc2”,front:“Was ist Tilgung?”,back:“Rückzahlung des Darlehens – im Gegensatz zu Zinsen.”},
+],
+},
+{
+id:“akquise”, title:“Akquise & Einwände”, icon:“🤝”, xpReward:180,
+description:“Eigentümergespräche, Einwandbehandlung, Vertrauen und Abschlusslogik.”,
+questions:[
+{id:“a1”,question:“Eigentümer: ‘Ich versuche es erst selbst.’ Stärkste Reaktion?”,
+options:[“Sofort Provisions-Rabatt anbieten.”,“Fragen ob es um Kosten, Kontrolle oder schlechte Erfahrungen geht.”,“Eigene Erfolge auflisten.”,“Abwarten.”],
+correctIndex:1,difficulty:“mittel”,explanation:“Einwände sind selten reine Ablehnung. Erst Diagnose, dann Argumentation.”},
+{id:“a2”,question:“Was unterscheidet Einwand von Vorwand?”,
+options:[“Kein Unterschied.”,“Einwand ist real, Vorwand ist vorgeschoben mit anderem Motiv dahinter.”,“Vorwände kommen immer von Käufern.”,“Einwände sind immer über den Preis.”],
+correctIndex:1,difficulty:“leicht”,explanation:“Vorwände sind gefährlicher, weil man sie bekämpft ohne das echte Motiv zu kennen.”},
+],
+cards:[
+{id:“ac1”,front:“Was ist ein Vertrauensanker?”,back:“Konkreter Beleg für Kompetenz: Prozess, Zahlen, Referenzen oder klare Analyse.”},
+{id:“ac2”,front:“Kernfrage bei Akquise?”,back:“Wer entscheidet hier und warum verkaufen? Erst dann kommt der Pitch.”},
+],
+},
+];
+
+// ─── STORAGE ──────────────────────────────────────────────────────────────────
+const SK = “immo_v6”;
+function loadState() {
+try { const r = localStorage.getItem(SK); if (r) return JSON.parse(r); } catch {}
+return null;
+}
+function saveState(d) { try { localStorage.setItem(SK, JSON.stringify(d)); } catch {} }
+function getInitState() {
+const s = loadState();
+if (s) return s;
+return {
+modules: SEED_MODULES,
+progress: { xp: 0, answered: {}, cards: {}, exams: [], days: [] },
+profile: { name: “”, done: false },
+};
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+const XP_TABLE = [0,100,250,450,700,1000,1400,1900,2500,3200,4000];
+const RANKS = [“Einsteiger”,“Lernender”,“Anwärter”,“Praktikant”,“Junior Makler”,“Makler”,“Senior Makler”,“Experte”,“Profi”,“Meister”,“Elite”];
+function getLvl(xp) {
+let lv = 1;
+for (let i = 1; i < XP_TABLE.length; i++) { if (xp >= XP_TABLE[i]) lv = i + 1; else break; }
+lv = Math.min(lv, XP_TABLE.length);
+const cur = XP_TABLE[lv-1]||0, nxt = XP_TABLE[lv]||XP_TABLE[XP_TABLE.length-1];
+const pct = nxt > cur ? Math.round(((xp-cur)/(nxt-cur))*100) : 100;
+return { lv, rank: RANKS[lv-1]||“Elite”, pct: Math.max(0, Math.min(100, pct)), toNext: Math.max(0, nxt-xp) };
+}
+function todayStr() { return new Date().toISOString().slice(0,10); }
+function makeId() { return “*” + Date.now() + “*” + Math.random().toString(36).slice(2,5); }
+const LETTERS = [“A”,“B”,“C”,“D”];
+
+// ─── ROOT ─────────────────────────────────────────────────────────────────────
+function App() {
+const [data, setData] = useState(getInitState);
+const [page, setPage] = useState(“dashboard”);
+const [toast, setToast] = useState(null);
+const toastRef = useRef(null);
+
+useEffect(() => { saveState(data); }, [data]);
+
+const lvl = useMemo(() => getLvl(data.progress.xp), [data.progress.xp]);
+
+function showToast(msg) {
+clearTimeout(toastRef.current);
+setToast(null);
+setTimeout(() => {
+setToast(msg);
+toastRef.current = setTimeout(() => setToast(null), 2800);
+}, 20);
+}
+
+function addXp(n, label) {
+if (!n || n <= 0) return;
+const td = todayStr();
+setData(p => ({
+…p,
+progress: {
+…p.progress,
+xp: p.progress.xp + n,
+days: p.progress.days.includes(td) ? p.progress.days : […p.progress.days, td],
+},
+}));
+showToast(”+” + n + “ XP” + (label ? “ · “ + label : “”));
+}
+
+function answerQ(qId, correct, modId) {
+setData(p => ({
+…p,
+progress: {
+…p.progress,
+answered: { …p.progress.answered, [qId]: { correct, modId, at: new Date().toISOString() } },
+},
+}));
+addXp(correct ? 8 : 2, correct ? “Richtig! 🎉” : “Weiter lernen”);
+}
+
+function studyCard(cardId, quality) {
+const xm = { again: 1, hard: 3, good: 6 };
+setData(p => ({
+…p,
+progress: {
+…p.progress,
+cards: { …p.progress.cards, [cardId]: { quality, at: new Date().toISOString() } },
+},
+}));
+addXp(xm[quality] || 3);
+}
+
+function addExam(res) {
+setData(p => ({
+…p,
+progress: { …p.progress, exams: […(p.progress.exams || []), res] },
+}));
+addXp(res.passed ? 50 : 15, res.passed ? “Prüfung bestanden! 🏆” : “Prüfung abgeschlossen”);
+}
+
+function saveMods(mods) {
+setData(p => ({ …p, modules: mods }));
+showToast(“Gespeichert ✓”);
+}
+
+function saveProfile(patch) {
+setData(p => ({ …p, profile: { …p.profile, …patch } }));
+showToast(“Gespeichert ✓”);
+}
+
+function resetProgress() {
+setData(p => ({ …p, progress: { xp: 0, answered: {}, cards: {}, exams: [], days: [] } }));
+showToast(“Fortschritt zurückgesetzt”);
+}
+
+const props = { data, lvl, setPage, answerQ, studyCard, addExam, saveMods, saveProfile, resetProgress, showToast };
+
+const mainNav = [
+{ id: “dashboard”, label: “Dashboard”, icon: “📊” },
+{ id: “learn”,     label: “Lernen”,    icon: “📚” },
+{ id: “exam”,      label: “Prüfung”,   icon: “✏️” },
+{ id: “practice”,  label: “Karten”,    icon: “📇” },
+{ id: “stats”,     label: “Statistik”, icon: “📈” },
+];
+const adminNav = [
+{ id: “admin”,    label: “Inhalte verwalten”, icon: “⚙️” },
+{ id: “settings”, label: “Einstellungen”,     icon: “👤” },
+];
+
+return (
+<div>
+<style>{STYLE}</style>
+{toast && <div className="toast">{toast}</div>}
+<div className="app">
+
+```
+    {/* Sidebar */}
+    <aside className="side">
+      <div className="brand">
+        <div className="brand-ico">RI</div>
+        <div>
+          <strong>ImmoAkademie</strong>
+          <small>RheinMain</small>
+        </div>
+      </div>
+      <div className="nav-g">
+        <span className="nav-lbl">Menü</span>
+        {mainNav.map(n => (
+          <button key={n.id} className={"nav-btn" + (page === n.id ? " on" : "")} onClick={() => setPage(n.id)}>
+            <span className="nav-ico">{n.icon}</span>{n.label}
+          </button>
+        ))}
+      </div>
+      <div className="nav-g">
+        <span className="nav-lbl">Verwaltung</span>
+        {adminNav.map(n => (
+          <button key={n.id} className={"nav-btn" + (page === n.id ? " on" : "")} onClick={() => setPage(n.id)}>
+            <span className="nav-ico">{n.icon}</span>{n.label}
+          </button>
+        ))}
+      </div>
+      <div className="side-foot">
+        <div className="lv-box">
+          <div className="lv-row">
+            <span className="lv-name">{lvl.rank}</span>
+            <span className="lv-num">Lv {lvl.lv}</span>
+          </div>
+          <div className="xp-bar"><div className="xp-fill" style={{ width: lvl.pct + "%" }} /></div>
+          <small>{data.progress.xp} XP · noch {lvl.toNext} bis Lv {lvl.lv + 1}</small>
+        </div>
+      </div>
+    </aside>
+
+    {/* Mobile header */}
+    <div className="mob-head">
+      <strong>ImmoAkademie</strong>
+      <span className="tag t-a">Lv {lvl.lv}</span>
+    </div>
+
+    {/* Content */}
+    <main className="main">
+      {page === "dashboard" && <PageDashboard {...props} />}
+      {page === "learn"     && <PageLearn     {...props} />}
+      {page === "exam"      && <PageExam      {...props} />}
+      {page === "practice"  && <PagePractice  {...props} />}
+      {page === "stats"     && <PageStats     {...props} />}
+      {page === "admin"     && <PageAdmin     {...props} />}
+      {page === "settings"  && <PageSettings  {...props} />}
+    </main>
+
+    {/* Bottom nav */}
+    <nav className="bot-nav">
+      {mainNav.map(n => (
+        <button key={n.id} className={"bn" + (page === n.id ? " on" : "")} onClick={() => setPage(n.id)}>
+          <span className="nav-ico">{n.icon}</span>{n.label}
+        </button>
+      ))}
+    </nav>
+
+  </div>
+</div>
+```
+
+);
+}
+
+// ─── SHARED COMPONENTS ────────────────────────────────────────────────────────
+function PH({ ew, title, sub }) {
+return (
+<div className="ph-wrap">
+<div className="ew">{ew}</div>
+<h1 className="p-title">{title}</h1>
+{sub && <p className="p-sub">{sub}</p>}
+</div>
+);
+}
+
+function StatCard({ val, label }) {
+return (
+<div className="sc">
+<div className="sc-v">{val}</div>
+<div className="sc-l">{label}</div>
+</div>
+);
+}
+
+function Heatmap({ days }) {
+const set = new Set(days);
+const td = todayStr();
+const cells = [];
+for (let i = 29; i >= 0; i–) {
+const d = new Date();
+d.setDate(d.getDate() - i);
+cells.push(d.toISOString().slice(0,10));
+}
+return (
+<div className="hmap">
+{cells.map(k => (
+<div key={k} className={“hc” + (set.has(k) ? “ on” : “”) + (k === td ? “ td” : “”)} title={k} />
+))}
+</div>
+);
+}
+
+function QCard({ q, idx, selIdx, onAnswer }) {
+const done = selIdx !== undefined;
+return (
+<div className="qc">
+<div style={{ display: “flex”, gap: 6, marginBottom: 8, flexWrap: “wrap” }}>
+<span className="tag t-m">#{idx + 1}</span>
+{q.difficulty && <span className="tag t-m">{q.difficulty}</span>}
+</div>
+<div className="q-text">{q.question}</div>
+{(q.options || []).map((opt, i) => {
+let cls = “a-opt”;
+if (done) {
+if (i === q.correctIndex) cls += “ cor”;
+else if (i === selIdx) cls += “ wrn”;
+} else if (selIdx === i) {
+cls += “ sel”;
+}
+return (
+<button key={i} className={cls} onClick={() => !done && onAnswer(i)} disabled={done}>
+<span className="ol">{LETTERS[i]}</span>
+<span>{opt}</span>
+</button>
+);
+})}
+{done && q.explanation && (
+<div className={“exp “ + (selIdx === q.correctIndex ? “exp-ok” : “exp-bad”)}>
+<div className="exp-hd">{selIdx === q.correctIndex ? “✓ Richtig!” : “✗ Leider falsch”}</div>
+{q.explanation}
+</div>
+)}
+</div>
+);
+}
+
+// ─── DASHBOARD ────────────────────────────────────────────────────────────────
+function PageDashboard({ data, lvl, setPage }) {
+const { progress, modules = [], profile } = data;
+const aq = progress.answered || {};
+const totalQ = modules.reduce((s, m) => s + (m.questions?.length || 0), 0);
+const answN = Object.keys(aq).length;
+const corrN = Object.values(aq).filter(a => a.correct).length;
+const acc = answN > 0 ? Math.round((corrN / answN) * 100) : 0;
+const cardN = Object.keys(progress.cards || {}).length;
+const lastExam = (progress.exams || []).slice(-1)[0];
+const name = profile?.name || “Lernender”;
+
+return (
+<div>
+{/* Hero – dark background, white text always readable */}
+<div className="hero">
+<div className="h-ew">Level {lvl.lv} · {lvl.rank}</div>
+<h1 className="h-title">Willkommen zurück, {name}!</h1>
+<p className="h-sub">
+{answN > 0
+? answN + “ von “ + totalQ + “ Fragen beantwortet · “ + acc + “ % Genauigkeit.”
+: “Starte deine erste Lernsession und sammle XP.”}
+</p>
+<div className="h-bar-t"><div className=“h-bar-f” style={{ width: lvl.pct + “%” }} /></div>
+<div className="h-bar-lbl">{progress.xp} XP · noch {lvl.toNext} XP bis Level {lvl.lv + 1}</div>
+<div className="h-btns">
+<button className=“hb-p” onClick={() => setPage(“learn”)}>📚 Jetzt lernen</button>
+<button className=“hb-s” onClick={() => setPage(“exam”)}>✏️ Prüfung starten</button>
+</div>
+</div>
+
+```
+  {!profile?.done && (
+    <div className="notice n-i" style={{ marginBottom: 14 }}>
+      <strong>Tipp:</strong> Trage deinen Namen unter{" "}
+      <button className="btn b-g b-sm" style={{ display: "inline-flex", verticalAlign: "middle" }} onClick={() => setPage("settings")}>
+        👤 Einstellungen
+      </button>{" "}ein.
+    </div>
+  )}
+
+  <div className="g4" style={{ marginBottom: 14 }}>
+    <StatCard val={progress.xp} label="Gesamt XP" />
+    <StatCard val={answN + "/" + totalQ} label="Fragen" />
+    <StatCard val={acc + "%"} label="Genauigkeit" />
+    <StatCard val={cardN} label="Karten gelernt" />
+  </div>
+
+  <div className="g2" style={{ marginBottom: 14 }}>
+    <div className="card">
+      <h4 className="st">📅 Lernaktivität (30 Tage)</h4>
+      <Heatmap days={progress.days || []} />
+      <p style={{ marginTop: 8, fontSize: 12, color: "#948c80" }}>{(progress.days || []).length} aktive Lerntage gesamt</p>
+    </div>
+    <div className="card">
+      <h4 className="st">✏️ Letzte Prüfung</h4>
+      {lastExam ? (
+        <div>
+          <span className={"tag " + (lastExam.passed ? "t-g" : "t-r")} style={{ marginBottom: 10, display: "inline-block" }}>
+            {lastExam.passed ? "✓ Bestanden" : "✗ Nicht bestanden"} · {lastExam.percent}%
+          </span>
+          <div className="pb" style={{ margin: "10px 0 6px" }}>
+            <div className={"pf " + (lastExam.passed ? "pf-g" : "pf-r")} style={{ width: lastExam.percent + "%" }} />
+          </div>
+          <p style={{ fontSize: 12.5, color: "#52493d" }}>{lastExam.correct} von {lastExam.total} Fragen richtig</p>
+        </div>
+      ) : (
+        <div style={{ textAlign: "center", padding: "14px 0" }}>
+          <div style={{ fontSize: 28, marginBottom: 8 }}>✏️</div>
+          <p style={{ fontSize: 12.5, color: "#948c80", marginBottom: 10 }}>Noch keine Prüfung</p>
+          <button className="btn b-s b-sm" onClick={() => setPage("exam")}>Starten</button>
+        </div>
+      )}
+    </div>
+  </div>
+
+  <div className="card">
+    <div className="row">
+      <h4 className="st" style={{ margin: 0 }}>🏗 Module</h4>
+      <button className="btn b-g b-sm" onClick={() => setPage("admin")}>⚙️ Verwalten</button>
+    </div>
+    <div className="g2">
+      {modules.map(m => {
+        const mQ = m.questions?.length || 0;
+        const mA = Object.values(aq).filter(a => a.modId === m.id).length;
+        const pct = mQ > 0 ? Math.min(100, Math.round((mA / mQ) * 100)) : 0;
+        return (
+          <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 8, background: "#f0ece6", display: "grid", placeItems: "center", fontSize: 18, flexShrink: 0 }}>
+              {m.icon || "📚"}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.title}</div>
+              <div className="pb" style={{ margin: "3px 0 2px" }}><div className="pf" style={{ width: pct + "%" }} /></div>
+              <div style={{ fontSize: 11, color: "#948c80" }}>{mA}/{mQ} · {pct}%</div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+</div>
+```
+
+);
+}
+
+// ─── LEARN ────────────────────────────────────────────────────────────────────
+function PageLearn({ data, answerQ }) {
+const mods = data.modules || [];
+const [modId, setModId] = useState(mods[0]?.id || “”);
+const [sel, setSel] = useState({});
+
+const mod = mods.find(m => m.id === modId) || mods[0];
+const qs = mod?.questions || [];
+const answered = qs.filter(q => sel[q.id] !== undefined);
+const correct = answered.filter(q => sel[q.id] === q.correctIndex);
+const acc = answered.length > 0 ? Math.round((correct.length / answered.length) * 100) : 0;
+
+function handle(q, idx) {
+if (sel[q.id] !== undefined) return;
+setSel(p => ({ …p, [q.id]: idx }));
+answerQ(q.id, idx === q.correctIndex, mod.id);
+}
+
+if (!mod) return (
+<div>
+<PH ew="Lernen" title="Keine Module" />
+<div className="notice n-w">Füge Module unter “Inhalte verwalten” hinzu.</div>
+</div>
+);
+
+return (
+<div>
+<PH ew="Lernmodus" title="Lernen" sub="Beantworte Fragen und erhalte sofortiges Feedback." />
+
+```
+  <div className="card" style={{ marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={{ width: 40, height: 40, borderRadius: 9, background: "#f0ece6", display: "grid", placeItems: "center", fontSize: 20, flexShrink: 0 }}>
+        {mod.icon || "📚"}
+      </div>
+      <div>
+        <div style={{ fontWeight: 700, fontSize: 14 }}>{mod.title}</div>
+        <div style={{ fontSize: 11.5, color: "#948c80", marginTop: 2 }}>
+          {qs.length} Fragen{answered.length > 0 ? " · " + answered.length + " beantwortet · " + acc + "% korrekt" : ""}
+        </div>
+      </div>
+    </div>
+    <div style={{ display: "flex", gap: 7, flexWrap: "wrap", alignItems: "center" }}>
+      <select className="fi" style={{ width: "auto", fontSize: 12.5 }} value={modId} onChange={e => { setModId(e.target.value); setSel({}); }}>
+        {mods.map(m => <option key={m.id} value={m.id}>{m.icon} {m.title}</option>)}
+      </select>
+      <button className="btn b-g b-sm" onClick={() => setSel({})}>↺ Neu</button>
+    </div>
+  </div>
+
+  {answered.length > 0 && (
+    <div style={{ marginBottom: 11 }}>
+      <div style={{ fontSize: 11.5, color: "#948c80", marginBottom: 3 }}>{answered.length}/{qs.length} beantwortet</div>
+      <div className="pb"><div className="pf" style={{ width: Math.round((answered.length / qs.length) * 100) + "%" }} /></div>
+    </div>
+  )}
+
+  {qs.length === 0 ? (
+    <div style={{ textAlign: "center", padding: 28, color: "#948c80" }}>
+      <div style={{ fontSize: 32, marginBottom: 8 }}>📝</div>
+      <p>Keine Fragen. Füge sie unter "Inhalte verwalten" hinzu.</p>
+    </div>
+  ) : (
+    qs.map((q, i) => <QCard key={q.id} q={q} idx={i} selIdx={sel[q.id]} onAnswer={idx => handle(q, idx)} />)
+  )}
+
+  {qs.length > 0 && answered.length === qs.length && (
+    <div style={{
+      background: acc >= 70 ? "#eaf5ef" : "#fdf1f0",
+      border: "1.5px solid " + (acc >= 70 ? "#9fd4b8" : "#f0aba4"),
+      borderRadius: 14, padding: 24, textAlign: "center", marginTop: 6
+    }}>
+      <div style={{ fontSize: 36, marginBottom: 6 }}>{acc >= 70 ? "🎉" : "💪"}</div>
+      <h3 style={{ fontFamily: "'Fraunces',serif", fontSize: 20, marginBottom: 5 }}>{acc >= 70 ? "Modul abgeschlossen!" : "Weiter üben!"}</h3>
+      <p style={{ color: "#52493d", marginBottom: 14 }}>{correct.length}/{qs.length} richtig · {acc}%</p>
+      <button className="btn b-p" onClick={() => setSel({})}>Nochmal</button>
+    </div>
+  )}
+</div>
+```
+
+);
+}
+
+// ─── EXAM ─────────────────────────────────────────────────────────────────────
+function PageExam({ data, addExam }) {
+const mods = data.modules || [];
+const [started, setStarted] = useState(false);
+const [examQs, setExamQs] = useState([]);
+const [ans, setAns] = useState({});
+const [result, setResult] = useState(null);
+const [tl, setTl] = useState(0);
+const [cfg, setCfg] = useState({ count: 10, mins: 15, pass: 70 });
+const tiRef = useRef(null);
+const finishFn = useRef(null);
+
+useEffect(() => {
+if (!started || result) return;
+tiRef.current = setInterval(() => {
+setTl(p => {
+if (p <= 1) { clearInterval(tiRef.current); return 0; }
+return p - 1;
+});
+}, 1000);
+return () => clearInterval(tiRef.current);
+}, [started, result]);
+
+useEffect(() => {
+if (started && !result && tl === 0 && examQs.length > 0) {
+if (finishFn.current) finishFn.current();
+}
+}, [tl, started, result, examQs.length]);
+
+const totalAvail = mods.reduce((s, m) => s + (m.questions?.length || 0), 0);
+
+function startExam() {
+const all = mods.flatMap(m => (m.questions || []).map(q => ({ …q, modTitle: m.title, modId: m.id })));
+const sh = […all].sort(() => Math.random() - 0.5).slice(0, Math.min(cfg.count, all.length));
+setExamQs(sh);
+setAns({});
+setResult(null);
+setTl(cfg.mins * 60);
+setStarted(true);
+}
+
+function finish() {
+clearInterval(tiRef.current);
+const corr = examQs.filter(q => ans[q.id] === q.correctIndex).length;
+const pct = examQs.length > 0 ? Math.round((corr / examQs.length) * 100) : 0;
+const res = { correct: corr, total: examQs.length, percent: pct, passed: pct >= cfg.pass, date: new Date().toISOString() };
+setResult(res);
+addExam(res);
+}
+finishFn.current = finish;
+
+if (result) return (
+<div>
+<PH ew="Ergebnis" title="Prüfung abgeschlossen" />
+<div style={{
+background: result.passed ? “#eaf5ef” : “#fdf1f0”,
+border: “1.5px solid “ + (result.passed ? “#9fd4b8” : “#f0aba4”),
+borderRadius: 14, padding: “26px 22px”, textAlign: “center”, marginBottom: 14
+}}>
+<div style={{ fontSize: 44, marginBottom: 7 }}>{result.passed ? “🏆” : “📖”}</div>
+<h2 style={{ fontFamily: “‘Fraunces’,serif”, fontSize: 34, marginBottom: 6 }}>{result.percent}%</h2>
+<span className={“tag “ + (result.passed ? “t-g” : “t-r”)} style={{ fontSize: 13, marginBottom: 10, display: “inline-block” }}>
+{result.passed ? “Bestanden ✓” : “Nicht bestanden”}
+</span>
+<p style={{ color: “#52493d”, marginTop: 8, marginBottom: 16 }}>{result.correct}/{result.total} Fragen richtig</p>
+<div className=“pb” style={{ width: “min(340px,100%)”, margin: “0 auto 18px” }}>
+<div className={“pf “ + (result.passed ? “pf-g” : “pf-r”)} style={{ width: result.percent + “%” }} />
+</div>
+<button className=“btn b-p” onClick={() => { setStarted(false); setResult(null); }}>Neue Prüfung</button>
+</div>
+<div className="card">
+<h4 className="st">Antworten</h4>
+{examQs.map((q, i) => {
+const ok = ans[q.id] === q.correctIndex;
+return (
+<div key={q.id} style={{ display: “flex”, gap: 9, padding: “9px 0”, borderBottom: “1.5px solid #d8d2c8”, alignItems: “flex-start” }}>
+<span style={{ fontSize: 15, flexShrink: 0 }}>{ok ? “✅” : “❌”}</span>
+<div style={{ flex: 1 }}>
+<div style={{ fontSize: 12.5, fontWeight: 600, lineHeight: 1.45 }}>{i+1}. {q.question}</div>
+{!ok && <div style={{ fontSize: 11.5, color: “#1e6e43”, marginTop: 3 }}>✓ {q.options?.[q.correctIndex]}</div>}
+</div>
+</div>
+);
+})}
+</div>
+</div>
+);
+
+if (!started) return (
+<div>
+<PH ew="Prüfungsmodus" title="Prüfungssimulation" sub="Teste dein Wissen unter Zeitdruck." />
+<div className=“card” style={{ maxWidth: 440 }}>
+<h4 className="st">Konfiguration</h4>
+<div className="fg">
+<label className="fl">Anzahl Fragen</label>
+<input className=“fi” type=“number” min={3} max={30} value={cfg.count} onChange={e => setCfg(p => ({ …p, count: +e.target.value }))} />
+</div>
+<div className="fg">
+<label className="fl">Zeitlimit (Minuten)</label>
+<input className=“fi” type=“number” min={2} max={60} value={cfg.mins} onChange={e => setCfg(p => ({ …p, mins: +e.target.value }))} />
+</div>
+<div className="fg">
+<label className="fl">Bestehensschwelle (%)</label>
+<input className=“fi” type=“number” min={50} max={100} value={cfg.pass} onChange={e => setCfg(p => ({ …p, pass: +e.target.value }))} />
+</div>
+<div className="notice n-i">Verfügbare Fragen: {totalAvail} aus {mods.length} Modulen</div>
+<button className=“btn b-p b-lg b-full” style={{ marginTop: 9 }} onClick={startExam} disabled={totalAvail === 0}>
+✏️ Prüfung starten
+</button>
+</div>
+</div>
+);
+
+const mm = Math.floor(tl / 60), ss = tl % 60;
+const urgent = tl > 0 && tl < 60;
+
+return (
+<div>
+<div style={{ position: “sticky”, top: 0, zIndex: 20, background: “#fff”, border: “1.5px solid #d8d2c8”, borderRadius: 14, padding: “10px 14px”, display: “flex”, justifyContent: “space-between”, alignItems: “center”, marginBottom: 14, flexWrap: “wrap”, gap: 7 }}>
+<div style={{ display: “flex”, gap: 8, alignItems: “center”, flexWrap: “wrap” }}>
+<span className="tag t-m">{Object.keys(ans).length}/{examQs.length} beantwortet</span>
+<span className={“tag “ + (urgent ? “t-r” : “t-m”)} style={{ fontVariantNumeric: “tabular-nums” }}>
+{urgent ? “⚠️ “ : “”}{mm}:{ss.toString().padStart(2, “0”)}
+</span>
+</div>
+<button className="btn b-p b-sm" onClick={finish}>Abgeben</button>
+</div>
+{examQs.map((q, i) => (
+<div className="qc" key={q.id}>
+<div style={{ display: “flex”, gap: 6, marginBottom: 8, flexWrap: “wrap” }}>
+<span className="tag t-m">#{i+1}</span>
+<span className="tag t-m">{q.modTitle}</span>
+</div>
+<div className="q-text">{q.question}</div>
+{(q.options || []).map((opt, idx) => (
+<button key={idx} className={“a-opt” + (ans[q.id] === idx ? “ sel” : “”)} onClick={() => setAns(p => ({ …p, [q.id]: idx }))}>
+<span className="ol">{LETTERS[idx]}</span>
+<span>{opt}</span>
+</button>
+))}
+</div>
+))}
+<div style={{ textAlign: “center”, paddingTop: 10 }}>
+<button className="btn b-p b-lg" onClick={finish}>Prüfung abgeben</button>
+</div>
+</div>
+);
+}
+
+// ─── PRACTICE ─────────────────────────────────────────────────────────────────
+function PagePractice({ data, studyCard }) {
+const mods = data.modules || [];
+const [modId, setModId] = useState(mods[0]?.id || “”);
+const [open, setOpen] = useState({});
+
+const mod = mods.find(m => m.id === modId) || mods[0];
+const cards = mod?.cards || [];
+
+if (!mod) return <div><PH ew="Karteikarten" title="Keine Module" /><div className="notice n-w">Keine Inhalte vorhanden.</div></div>;
+
+return (
+<div>
+<PH ew="Karteikarten" title="Karteikarten" sub="Karte antippen → Antwort sehen → Wissen bewerten." />
+<div style={{ display: “flex”, gap: 6, marginBottom: 16, flexWrap: “wrap” }}>
+{mods.map(m => (
+<button key={m.id} className={“btn b-sm “ + (modId === m.id ? “b-p” : “b-s”)} onClick={() => { setModId(m.id); setOpen({}); }}>
+{m.icon} {m.title}
+</button>
+))}
+</div>
+{cards.length === 0 ? (
+<div style={{ textAlign: “center”, padding: 28, color: “#948c80” }}>
+<div style={{ fontSize: 32, marginBottom: 8 }}>📇</div>
+<p style={{ marginBottom: 8 }}>Keine Karteikarten in diesem Modul.</p>
+<p style={{ fontSize: 12 }}>Füge Karten unter “Inhalte verwalten → Karteikarten” hinzu.</p>
+</div>
+) : cards.map(c => {
+const isOpen = open[c.id];
+const studied = data.progress.cards?.[c.id];
+return (
+<div key={c.id} className="fc">
+<div className=“fc-front” onClick={() => setOpen(p => ({ …p, [c.id]: !p[c.id] }))}>
+<span style={{ flex: 1 }}>{c.front}</span>
+<div style={{ display: “flex”, gap: 6, alignItems: “center”, flexShrink: 0 }}>
+{studied && <span className=“tag t-g” style={{ fontSize: 10.5 }}>✓</span>}
+<span style={{ color: “#948c80”, fontSize: 14 }}>{isOpen ? “▲” : “▼”}</span>
+</div>
+</div>
+{isOpen && (
+<div>
+<div className="fc-back">{c.back}</div>
+<div className="fc-acts">
+<button className=“btn b-g b-sm” onClick={() => studyCard(c.id, “again”)}>↩ Nochmal +1 XP</button>
+<button className=“btn b-s b-sm” onClick={() => studyCard(c.id, “hard”)}>🤔 Schwer +3 XP</button>
+<button className=“btn b-ok b-sm” onClick={() => studyCard(c.id, “good”)}>✓ Kann ich +6 XP</button>
+</div>
+</div>
+)}
+</div>
+);
+})}
+</div>
+);
+}
+
+// ─── STATS ────────────────────────────────────────────────────────────────────
+function PageStats({ data, lvl }) {
+const { progress, modules = [] } = data;
+const aq = progress.answered || {};
+const totalQ = modules.reduce((s, m) => s + (m.questions?.length || 0), 0);
+const answN = Object.keys(aq).length;
+const corrN = Object.values(aq).filter(a => a.correct).length;
+const acc = answN > 0 ? Math.round((corrN / answN) * 100) : 0;
+const cardN = Object.keys(progress.cards || {}).length;
+const totalC = modules.reduce((s, m) => s + (m.cards?.length || 0), 0);
+const exams = progress.exams || [];
+const avgE = exams.length > 0 ? Math.round(exams.reduce((s, e) => s + e.percent, 0) / exams.length) : 0;
+
+return (
+<div>
+<PH ew="Analyse" title="Statistik" />
+<div className=“g4” style={{ marginBottom: 14 }}>
+<StatCard val={progress.xp} label="Gesamt XP" />
+<StatCard val={acc + “%”} label=“Genauigkeit” />
+<StatCard val={answN + “/” + totalQ} label=“Fragen” />
+<StatCard val={cardN + “/” + totalC} label=“Karten” />
+</div>
+<div className=“g2” style={{ marginBottom: 14 }}>
+<div className="card">
+<h4 className="st">📊 Fortschritt je Modul</h4>
+{modules.map(m => {
+const mQ = m.questions?.length || 0;
+const mA = Object.values(aq).filter(a => a.modId === m.id).length;
+const mC = Object.values(aq).filter(a => a.modId === m.id && a.correct).length;
+const pct = mQ > 0 ? Math.min(100, Math.round((mA / mQ) * 100)) : 0;
+const macc = mA > 0 ? Math.round((mC / mA) * 100) : 0;
+return (
+<div key={m.id} style={{ marginBottom: 13 }}>
+<div style={{ display: “flex”, justifyContent: “space-between”, marginBottom: 3 }}>
+<span style={{ fontSize: 12.5, fontWeight: 700 }}>{m.icon} {m.title}</span>
+<span style={{ fontSize: 11, color: “#948c80” }}>{mA}/{mQ} · {macc}%</span>
+</div>
+<div className="pb"><div className=“pf” style={{ width: pct + “%” }} /></div>
+</div>
+);
+})}
+</div>
+<div className="card">
+<h4 className="st">✏️ Prüfungshistorie</h4>
+{exams.length === 0 ? (
+<p style={{ fontSize: 12.5, color: “#948c80” }}>Noch keine Prüfungen.</p>
+) : (
+<div>
+<div className=“notice n-i” style={{ marginBottom: 11 }}>Ø {avgE}% · {exams.filter(e => e.passed).length}/{exams.length} bestanden</div>
+{exams.slice(-6).reverse().map((e, i) => (
+<div key={i} style={{ display: “flex”, justifyContent: “space-between”, alignItems: “center”, padding: “8px 0”, borderBottom: “1.5px solid #d8d2c8” }}>
+<span className={“tag “ + (e.passed ? “t-g” : “t-r”)}>{e.passed ? “✓” : “✗”} {e.correct}/{e.total}</span>
+<strong style={{ fontFamily: “‘Fraunces’,serif”, fontSize: 19, color: e.passed ? “#1e6e43” : “#b52a1e” }}>{e.percent}%</strong>
+</div>
+))}
+</div>
+)}
+</div>
+</div>
+<div className="card">
+<h4 className="st">🏅 Level</h4>
+<div style={{ display: “flex”, gap: 13, alignItems: “center”, flexWrap: “wrap” }}>
+<div style={{ width: 50, height: 50, borderRadius: 13, background: “#fef6ec”, border: “2px solid #f2d49a”, display: “grid”, placeItems: “center”, flexShrink: 0 }}>
+<span style={{ fontFamily: “‘Fraunces’,serif”, fontSize: 22, color: “#b8712a” }}>{lvl.lv}</span>
+</div>
+<div style={{ flex: 1, minWidth: 140 }}>
+<div style={{ fontWeight: 700, marginBottom: 3 }}>{lvl.rank}</div>
+<div className="xp-bar"><div className=“xp-fill” style={{ width: lvl.pct + “%” }} /></div>
+<div style={{ fontSize: 11, color: “#948c80”, marginTop: 3 }}>{data.progress.xp} XP · noch {lvl.toNext} bis Lv {lvl.lv + 1}</div>
+</div>
+</div>
+</div>
+</div>
+);
+}
+
+// ─── ADMIN ────────────────────────────────────────────────────────────────────
+function PageAdmin({ data, saveMods, showToast }) {
+const [mods, setMods] = useState(() => JSON.parse(JSON.stringify(data.modules || [])));
+const [tab, setTab] = useState(“modules”);
+const [selM, setSelM] = useState(mods[0]?.id || “”);
+const [open, setOpen] = useState({});
+const tog = id => setOpen(p => ({ …p, [id]: !p[id] }));
+
+useEffect(() => { setMods(JSON.parse(JSON.stringify(data.modules || []))); }, [data.modules]);
+
+const activeMod = mods.find(m => m.id === selM);
+
+// Module ops
+function addMod() {
+const m = { id: makeId(), title: “Neues Modul”, icon: “📚”, xpReward: 100, description: “”, questions: [], cards: [] };
+setMods(p => […p, m]);
+setSelM(m.id);
+setOpen(p => ({ …p, [m.id]: true }));
+setTab(“modules”);
+}
+function updMod(id, patch) { setMods(p => p.map(m => m.id === id ? { …m, …patch } : m)); }
+function delMod(id) { if (!confirm(“Modul löschen?”)) return; setMods(p => p.filter(m => m.id !== id)); }
+
+// Question ops
+function addQ(mid) {
+const q = { id: makeId(), question: “”, options: [””, “”, “”, “”], correctIndex: 0, difficulty: “mittel”, explanation: “” };
+setMods(p => p.map(m => m.id === mid ? { …m, questions: […(m.questions || []), q] } : m));
+setOpen(p => ({ …p, [q.id]: true }));
+}
+function updQ(mid, qid, patch) { setMods(p => p.map(m => m.id === mid ? { …m, questions: (m.questions || []).map(q => q.id === qid ? { …q, …patch } : q) } : m)); }
+function delQ(mid, qid) { setMods(p => p.map(m => m.id === mid ? { …m, questions: (m.questions || []).filter(q => q.id !== qid) } : m)); }
+
+// Card ops
+function addCard(mid) {
+const c = { id: makeId(), front: “”, back: “” };
+setMods(p => p.map(m => m.id === mid ? { …m, cards: […(m.cards || []), c] } : m));
+setOpen(p => ({ …p, [c.id]: true }));
+}
+function updCard(mid, cid, patch) { setMods(p => p.map(m => m.id === mid ? { …m, cards: (m.cards || []).map(c => c.id === cid ? { …c, …patch } : c) } : m)); }
+function delCard(mid, cid) { setMods(p => p.map(m => m.id === mid ? { …m, cards: (m.cards || []).filter(c => c.id !== cid) } : m)); }
+
+function doExport() {
+const a = document.createElement(“a”);
+a.href = URL.createObjectURL(new Blob([JSON.stringify(mods, null, 2)], { type: “application/json” }));
+a.download = “immo-inhalte.json”;
+a.click();
+}
+async function doImport(e) {
+const f = e.target.files?.[0];
+if (!f) return;
+try {
+const t = await f.text();
+const parsed = JSON.parse(t);
+if (Array.isArray(parsed)) { setMods(parsed); showToast(“Import erfolgreich ✓”); }
+else showToast(“Ungültiges Format”);
+} catch { showToast(“Datei konnte nicht gelesen werden”); }
+e.target.value = “”;
+}
+
+return (
+<div>
+<div style={{ display: “flex”, justifyContent: “space-between”, alignItems: “flex-start”, marginBottom: 18, flexWrap: “wrap”, gap: 10 }}>
+<PH ew="Verwaltung" title="Inhalte verwalten" sub="Module · Fragen · Karteikarten bearbeiten und speichern." />
+<div style={{ display: “flex”, gap: 6, flexWrap: “wrap” }}>
+<button className="btn b-g b-sm" onClick={doExport}>📤 Export</button>
+<label className=“btn b-g b-sm” style={{ cursor: “pointer” }}>
+📥 Import
+<input type=“file” accept=”.json” style={{ display: “none” }} onChange={doImport} />
+</label>
+<button className=“btn b-p” onClick={() => saveMods(mods)}>💾 Alles speichern</button>
+</div>
+</div>
+
+```
+  <div className="notice n-i" style={{ marginBottom: 16 }}>
+    <strong>Anleitung:</strong> Tab wählen → Modul wählen → Inhalte hinzufügen/bearbeiten → <strong>„💾 Alles speichern"</strong> klicken.
+    Bei Fragen: Buchstaben-Button anklicken um die <strong>richtige Antwort grün</strong> zu markieren.
+  </div>
+
+  <div className="tabs">
+    <button className={"tab" + (tab === "modules" ? " on" : "")} onClick={() => setTab("modules")}>🏗 Module ({mods.length})</button>
+    <button className={"tab" + (tab === "questions" ? " on" : "")} onClick={() => setTab("questions")}>❓ Fragen</button>
+    <button className={"tab" + (tab === "cards" ? " on" : "")} onClick={() => setTab("cards")}>📇 Karten</button>
+  </div>
+
+  {/* MODULES TAB */}
+  {tab === "modules" && (
+    <div>
+      <div className="row">
+        <h4 className="st" style={{ margin: 0 }}>Module</h4>
+        <button className="btn b-p b-sm" onClick={addMod}>+ Modul hinzufügen</button>
+      </div>
+      {mods.length === 0 && <div className="notice n-w">Noch keine Module vorhanden.</div>}
+      {mods.map(m => (
+        <div key={m.id} className="acc">
+          <div className="acc-h" onClick={() => tog(m.id)}>
+            <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+              <span style={{ fontSize: 19 }}>{m.icon || "📚"}</span>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 13 }}>{m.title || "(Kein Titel)"}</div>
+                <div style={{ fontSize: 11, color: "#948c80" }}>{m.questions?.length || 0} Fragen · {m.cards?.length || 0} Karten</div>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <button className="btn b-d b-sm" onClick={e => { e.stopPropagation(); delMod(m.id); }}>Löschen</button>
+              <span style={{ color: "#948c80", fontSize: 13 }}>{open[m.id] ? "▲" : "▼"}</span>
+            </div>
+          </div>
+          {open[m.id] && (
+            <div className="acc-b">
+              <div className="g2">
+                <div className="fg"><label className="fl">Titel</label><input className="fi" value={m.title} onChange={e => updMod(m.id, { title: e.target.value })} placeholder="Modulname" /></div>
+                <div className="fg"><label className="fl">Icon (Emoji)</label><input className="fi" value={m.icon || ""} onChange={e => updMod(m.id, { icon: e.target.value })} placeholder="🏠" /></div>
+              </div>
+              <div className="fg"><label className="fl">Beschreibung</label><textarea className="fi" value={m.description || ""} onChange={e => updMod(m.id, { description: e.target.value })} placeholder="Kurze Beschreibung..." /></div>
+              <div className="fg"><label className="fl">XP Belohnung</label><input className="fi" type="number" value={m.xpReward || 100} onChange={e => updMod(m.id, { xpReward: +e.target.value })} /></div>
+              <div style={{ display: "flex", gap: 7, marginTop: 2 }}>
+                <button className="btn b-s b-sm" onClick={() => { setSelM(m.id); setTab("questions"); }}>❓ Fragen ({m.questions?.length || 0})</button>
+                <button className="btn b-s b-sm" onClick={() => { setSelM(m.id); setTab("cards"); }}>📇 Karten ({m.cards?.length || 0})</button>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  )}
+
+  {/* QUESTIONS TAB */}
+  {tab === "questions" && (
+    <div>
+      <div className="row">
+        <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
+          <h4 className="st" style={{ margin: 0 }}>Fragen</h4>
+          <select className="fi" style={{ width: "auto", fontSize: 12.5 }} value={selM || ""} onChange={e => setSelM(e.target.value)}>
+            <option value="">Modul wählen…</option>
+            {mods.map(m => <option key={m.id} value={m.id}>{m.icon} {m.title}</option>)}
+          </select>
+        </div>
+        {selM && <button className="btn b-p b-sm" onClick={() => addQ(selM)}>+ Frage hinzufügen</button>}
+      </div>
+      {!selM && <div className="notice n-i">Modul auswählen um Fragen zu bearbeiten.</div>}
+      {selM && !(activeMod?.questions?.length) && (
+        <div style={{ textAlign: "center", padding: 24, color: "#948c80" }}>
+          <div style={{ fontSize: 30, marginBottom: 8 }}>❓</div>
+          <p style={{ marginBottom: 10 }}>Noch keine Fragen.</p>
+          <button className="btn b-p b-sm" onClick={() => addQ(selM)}>+ Erste Frage</button>
+        </div>
+      )}
+      {activeMod?.questions?.map((q, qi) => (
+        <div key={q.id} className="acc">
+          <div className="acc-h" onClick={() => tog(q.id)}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
+              <span className="tag t-m" style={{ flexShrink: 0 }}>#{qi+1}</span>
+              <span style={{ fontSize: 12.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{q.question || "(Leer)"}</span>
+            </div>
+            <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+              <button className="btn b-d b-sm" onClick={e => { e.stopPropagation(); delQ(selM, q.id); }}>✕</button>
+              <span style={{ color: "#948c80", fontSize: 13 }}>{open[q.id] ? "▲" : "▼"}</span>
+            </div>
+          </div>
+          {open[q.id] && (
+            <div className="acc-b">
+              <div className="fg"><label className="fl">Frage</label><textarea className="fi" value={q.question} onChange={e => updQ(selM, q.id, { question: e.target.value })} placeholder="Fragetext..." /></div>
+              <div className="fg">
+                <label className="fl">Schwierigkeit</label>
+                <select className="fi" value={q.difficulty || "mittel"} onChange={e => updQ(selM, q.id, { difficulty: e.target.value })}>
+                  <option value="leicht">Leicht</option>
+                  <option value="mittel">Mittel</option>
+                  <option value="schwer">Schwer</option>
+                </select>
+              </div>
+              <div className="fg">
+                <label className="fl">Antworten — Buchstaben-Button klicken = richtige Antwort markieren (wird grün ✓)</label>
+                {(q.options || ["", "", "", ""]).map((opt, oi) => (
+                  <div key={oi} className="oer">
+                    <button className={"cm" + (q.correctIndex === oi ? " on" : "")} onClick={() => updQ(selM, q.id, { correctIndex: oi })}>
+                      {LETTERS[oi]}
+                    </button>
+                    <input className="fi" value={opt} placeholder={"Antwort " + LETTERS[oi]}
+                      onChange={e => {
+                        const opts = [...(q.options || ["", "", "", ""])];
+                        opts[oi] = e.target.value;
+                        updQ(selM, q.id, { options: opts });
+                      }} />
+                  </div>
+                ))}
+                <div className="notice n-ok" style={{ marginTop: 5 }}>
+                  Richtige Antwort: <strong>{LETTERS[q.correctIndex]}</strong> — "{q.options?.[q.correctIndex] || "(noch leer)"}"
+                </div>
+              </div>
+              <div className="fg"><label className="fl">Erklärung (nach Beantwortung)</label><textarea className="fi" value={q.explanation || ""} onChange={e => updQ(selM, q.id, { explanation: e.target.value })} placeholder="Warum ist diese Antwort richtig?" /></div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  )}
+
+  {/* CARDS TAB */}
+  {tab === "cards" && (
+    <div>
+      <div className="row">
+        <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
+          <h4 className="st" style={{ margin: 0 }}>Karteikarten</h4>
+          <select className="fi" style={{ width: "auto", fontSize: 12.5 }} value={selM || ""} onChange={e => setSelM(e.target.value)}>
+            <option value="">Modul wählen…</option>
+            {mods.map(m => <option key={m.id} value={m.id}>{m.icon} {m.title}</option>)}
+          </select>
+        </div>
+        {selM && <button className="btn b-p b-sm" onClick={() => addCard(selM)}>+ Karte hinzufügen</button>}
+      </div>
+      {!selM && <div className="notice n-i">Modul auswählen um Karten zu bearbeiten.</div>}
+      {selM && !(activeMod?.cards?.length) && (
+        <div style={{ textAlign: "center", padding: 24, color: "#948c80" }}>
+          <div style={{ fontSize: 30, marginBottom: 8 }}>📇</div>
+          <p style={{ marginBottom: 10 }}>Noch keine Karten.</p>
+          <button className="btn b-p b-sm" onClick={() => addCard(selM)}>+ Erste Karte</button>
+        </div>
+      )}
+      {activeMod?.cards?.map((c, ci) => (
+        <div key={c.id} className="acc">
+          <div className="acc-h" onClick={() => tog(c.id)}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0 }}>
+              <span className="tag t-m" style={{ flexShrink: 0 }}>#{ci+1}</span>
+              <span style={{ fontSize: 12.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{c.front || "(Leer)"}</span>
+            </div>
+            <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+              <button className="btn b-d b-sm" onClick={e => { e.stopPropagation(); delCard(selM, c.id); }}>✕</button>
+              <span style={{ color: "#948c80", fontSize: 13 }}>{open[c.id] ? "▲" : "▼"}</span>
+            </div>
+          </div>
+          {open[c.id] && (
+            <div className="acc-b">
+              <div className="fg"><label className="fl">Vorderseite (Frage / Begriff)</label><input className="fi" value={c.front} onChange={e => updCard(selM, c.id, { front: e.target.value })} placeholder="z.B. Was ist ein Bodenrichtwert?" /></div>
+              <div className="fg"><label className="fl">Rückseite (Antwort / Definition)</label><textarea className="fi" value={c.back} onChange={e => updCard(selM, c.id, { back: e.target.value })} placeholder="Antwort oder Erklärung..." /></div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  )}
+
+  <div style={{ position: "sticky", bottom: 12, display: "flex", justifyContent: "flex-end", paddingTop: 10 }}>
+    <button className="btn b-p b-lg" onClick={() => saveMods(mods)} style={{ boxShadow: "0 3px 16px rgba(0,0,0,.16)" }}>
+      💾 Alles speichern
+    </button>
+  </div>
+</div>
+```
+
+);
+}
+
+// ─── SETTINGS ─────────────────────────────────────────────────────────────────
+function PageSettings({ data, saveProfile, resetProgress }) {
+const [name, setName] = useState(data.profile?.name || “”);
+const [goal, setGoal] = useState(data.profile?.dailyGoal || 100);
+
+return (
+<div>
+<PH ew="Konto" title="Einstellungen" />
+<div className=“g2” style={{ marginBottom: 14 }}>
+<div className="card">
+<h4 className="st">👤 Profil</h4>
+<div className="fg"><label className="fl">Dein Name</label><input className=“fi” value={name} onChange={e => setName(e.target.value)} placeholder=“Name…” /></div>
+<div className="fg"><label className="fl">Tages-XP-Ziel</label><input className=“fi” type=“number” min={20} max={500} value={goal} onChange={e => setGoal(+e.target.value)} /></div>
+<button className=“btn b-p” onClick={() => saveProfile({ name, dailyGoal: goal, done: true })}>Speichern</button>
+</div>
+<div className="card">
+<h4 className="st">🗄 Daten</h4>
+<div className=“notice n-i” style={{ marginBottom: 11 }}>Alle Daten werden lokal im Browser gespeichert.</div>
+<p style={{ fontSize: 12.5, color: “#52493d”, marginBottom: 13 }}>
+XP: <strong>{data.progress.xp}</strong> · Fragen: <strong>{Object.keys(data.progress.answered || {}).length}</strong> · Karten: <strong>{Object.keys(data.progress.cards || {}).length}</strong>
+</p>
+<button className=“btn b-d” onClick={() => { if (confirm(“Wirklich zurücksetzen? Alle XP und Fortschritte gehen verloren.”)) resetProgress(); }}>
+⚠️ Fortschritt zurücksetzen
+</button>
+</div>
+</div>
+<div className="card">
+<h4 className="st">ℹ️ App Info</h4>
+<p style={{ fontSize: 13, color: “#52493d”, lineHeight: 1.75 }}>
+<strong>RheinMain ImmoAkademie · v6</strong><br />
+Lernapp für angehende Immobilienmakler im Rhein-Main-Gebiet.<br />
+Module, Fragen und Karteikarten sind unter “Inhalte verwalten” anpassbar.
+</p>
+</div>
+</div>
+);
+}
+
+// Mount the app
+const root = ReactDOM.createRoot(document.getElementById(‘root’));
+root.render(React.createElement(App));
+</script>
+
+</body>
+</html>
